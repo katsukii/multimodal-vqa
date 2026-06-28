@@ -1,0 +1,33 @@
+# Improved model: pretrained ViT + BERT encoders, cross-modal attention, soft labels.
+name: vit_bert_attn
+
+data:
+  root: data/vizwiz
+  image_size: 224
+  num_workers: 4
+  answer_vocab_size: 3000
+
+model:
+  image_encoder:
+    type: vit
+    pretrained: true
+    freeze: false       # fine-tune
+  text_encoder:
+    type: bert
+  fusion:
+    type: cross_attention
+    hidden_dim: 1024
+
+train:
+  epochs: 20
+  batch_size: 64
+  lr: 2.0e-5
+  weight_decay: 0.01
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 500
+  amp: true
+  soft_label: true
+  seed: 42
+
+output_dir: experiments/vit_bert_attn
