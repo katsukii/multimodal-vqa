@@ -14,10 +14,12 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 
 from .config import load_config
 from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for, soft_target_from_answers
+from .textutils import process_text
 from .metrics import vqa_accuracy_batch
 from .model import VQAModel
 
@@ -131,14 +133,31 @@ def train(cfg) -> None:
     use_amp = bool(cfg.train.get("amp", False)) and device == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
-    ce = nn.CrossEntropyLoss()
     banned = [i for i, a in full.idx2answer.items() if a in (UNK, PAD)]
 
+    # Optional class-balanced weighting: down-weight frequent answers (e.g. "unanswerable")
+    # so the model stops defaulting to the majority class (office-hour #2 recommendation).
+    class_weight = None
+    if bool(cfg.train.get("class_balanced", False)):
+        counts = torch.ones(full.num_answers)  # +1 smoothing
+        for answers in full.df["answers"]:
+            for a in answers:
+                counts[full.answer2idx.get(process_text(a["answer"]), full.unk_answer_idx)] += 1
+        alpha = float(cfg.train.get("cb_alpha", 0.5))
+        w = (counts.sum() / counts) ** alpha
+        class_weight = (w / w.mean()).clamp(0.2, 10.0).to(device)
+
     def compute_loss(logits, answers, mode_answer):
+        mode_answer = mode_answer.to(device)
         if soft_label:
             target = soft_target_from_answers(answers.to(device), full.num_answers)
-            return -(torch.log_softmax(logits, dim=1) * target).sum(dim=1).mean()
-        return ce(logits, mode_answer.to(device))
+            per = -(torch.log_softmax(logits, dim=1) * target).sum(dim=1)
+        else:
+            per = F.cross_entropy(logits, mode_answer, reduction="none")
+        if class_weight is not None:
+            sw = class_weight[mode_answer]
+            return (per * sw).sum() / sw.sum()
+        return per.mean()
 
     os.makedirs(cfg.output_dir, exist_ok=True)
     best_acc, history = -1.0, []

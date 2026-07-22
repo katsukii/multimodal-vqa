@@ -1,0 +1,45 @@
+# Run B (push toward ~0.60): ViT + BERT + cross-attention + soft + differential LR
+# + class-balanced loss. Down-weights the dominant "unanswerable" class so the model stops
+# defaulting to the majority answer (office-hour #2 recommendation).
+name: vit_bert_attn_cb
+
+data:
+  root: data
+  image_size: 224
+  num_workers: 2
+  answer_vocab_size: null
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: true
+
+model:
+  image_encoder:
+    type: vit
+    pretrained: true
+    freeze: false
+  text_encoder:
+    type: bert
+    name: bert-base-uncased
+    freeze: false
+  fusion:
+    type: cross_attention
+    hidden_dim: 768
+
+train:
+  epochs: 6
+  batch_size: 12
+  lr: 2.0e-5
+  head_lr: 5.0e-4
+  grad_clip: 1.0
+  weight_decay: 0.01
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 400
+  amp: true
+  soft_label: true
+  class_balanced: true    # inverse-frequency (alpha=0.5) class weighting
+  cb_alpha: 0.5
+  seed: 42
+
+output_dir: experiments/vit_bert_attn_cb
+backup_dir: /content/drive/MyDrive/vqa_ckpts
