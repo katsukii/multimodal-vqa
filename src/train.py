@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 
 from .config import load_config
-from .dataset import PAD, UNK, VizWizVQA, build_image_transform, soft_target_from_answers
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for, soft_target_from_answers
 from .metrics import vqa_accuracy_batch
 from .model import VQAModel
 
@@ -86,8 +86,9 @@ def train(cfg) -> None:
     soft_label = bool(cfg.train.get("soft_label", False))
 
     tokenizer = build_tokenizer(cfg)
+    mean, std = norm_stats_for(cfg.model.image_encoder.type)
     train_tf = build_image_transform(cfg.data.image_size, pretrained, train=True,
-                                     augment=bool(cfg.data.get("augment", False)))
+                                     augment=bool(cfg.data.get("augment", False)), mean=mean, std=std)
     # Full training dataset (vocab built over all train rows), then split into train/val.
     full = VizWizVQA(
         root=cfg.data.root, split="train", transform=train_tf, answer=True,

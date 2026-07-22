@@ -58,10 +58,11 @@ class _TimmBackbone(nn.Module):
         model_name = {
             "vit": "vit_base_patch16_224",
             "convnext": "convnext_tiny",
+            "clip": "vit_base_patch16_clip_224",  # CLIP vision encoder (vision-language aligned)
         }[name]
         self.model = timm.create_model(model_name, pretrained=pretrained, num_classes=0)
         self.out_dim = self.model.num_features
-        self.is_vit = name == "vit"
+        self.is_vit = name in ("vit", "clip")
         if freeze:
             for p in self.model.parameters():
                 p.requires_grad = False
@@ -75,13 +76,13 @@ class _TimmBackbone(nn.Module):
 
 
 def build_image_encoder(cfg) -> nn.Module:
-    """type: resnet18 | resnet50 | vit | convnext."""
+    """type: resnet18 | resnet50 | vit | convnext | clip."""
     t = cfg.type
     pretrained = bool(cfg.get("pretrained", False))
     freeze = bool(cfg.get("freeze", False))
     if t in ("resnet18", "resnet50"):
         return _TorchvisionBackbone(t, pretrained, freeze)
-    if t in ("vit", "convnext"):
+    if t in ("vit", "convnext", "clip"):
         return _TimmBackbone(t, pretrained, freeze)
     raise ValueError(f"unknown image encoder type: {t}")
 

@@ -169,13 +169,23 @@ class VizWizVQA(Dataset):
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
+CLIP_MEAN = (0.4815, 0.4578, 0.4082)
+CLIP_STD = (0.2686, 0.2613, 0.2758)
 
 
-def build_image_transform(image_size: int, pretrained: bool, train: bool, augment: bool = False):
+def norm_stats_for(encoder_type: str):
+    """Normalization mean/std matching the pretrained backbone."""
+    return (CLIP_MEAN, CLIP_STD) if encoder_type == "clip" else (IMAGENET_MEAN, IMAGENET_STD)
+
+
+def build_image_transform(image_size: int, pretrained: bool, train: bool, augment: bool = False,
+                          mean=IMAGENET_MEAN, std=IMAGENET_STD):
     """Build the torchvision image transform.
 
-    Pretrained backbones expect ImageNet normalization; the scratch baseline just scales
-    to [0, 1]. Light augmentation (crop + flip + jitter) is enabled for training when asked.
+    Pretrained backbones expect their own normalization (ImageNet, or CLIP stats for CLIP);
+    the scratch baseline just scales to [0, 1]. Augmentation is crop + color jitter only — no
+    horizontal flip, which can flip the meaning of spatially/text-dependent VQA questions
+    (office-hour caution: avoid augmentations that produce unrealistic examples).
     """
     from torchvision import transforms
 
@@ -183,14 +193,13 @@ def build_image_transform(image_size: int, pretrained: bool, train: bool, augmen
     if train and augment:
         ops += [
             transforms.RandomResizedCrop(image_size, scale=(0.7, 1.0)),
-            transforms.RandomHorizontalFlip(),
             transforms.ColorJitter(0.2, 0.2, 0.2),
         ]
     else:
         ops += [transforms.Resize((image_size, image_size))]
     ops += [transforms.ToTensor()]
     if pretrained:
-        ops += [transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)]
+        ops += [transforms.Normalize(mean, std)]
     return transforms.Compose(ops)
 
 

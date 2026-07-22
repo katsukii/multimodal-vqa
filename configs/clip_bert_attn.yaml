@@ -1,0 +1,43 @@
+# Run 4 (best shot at ~60%): CLIP vision encoder + BERT + cross-attention + soft labels
+# + differential LR. Mirrors the recipe the VQA TA described for reaching ~60% (CLIP image
+# features are vision-language aligned, which helps VQA more than an ImageNet backbone).
+name: clip_bert_attn
+
+data:
+  root: data
+  image_size: 224
+  num_workers: 2
+  answer_vocab_size: null
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: true
+
+model:
+  image_encoder:
+    type: clip
+    pretrained: true
+    freeze: false
+  text_encoder:
+    type: bert
+    name: bert-base-uncased
+    freeze: false
+  fusion:
+    type: cross_attention
+    hidden_dim: 768
+
+train:
+  epochs: 5
+  batch_size: 12          # CLIP-ViT-B + BERT-base both fine-tuned; fits a 16GB T4 with AMP (drop to 8 on OOM)
+  lr: 2.0e-5             # low LR for the pretrained CLIP/BERT encoders
+  head_lr: 5.0e-4        # higher LR for the fresh fusion + classifier head
+  grad_clip: 1.0
+  weight_decay: 0.01
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 400
+  amp: true
+  soft_label: true
+  seed: 42
+
+output_dir: experiments/clip_bert_attn
+backup_dir: /content/drive/MyDrive/vqa_ckpts

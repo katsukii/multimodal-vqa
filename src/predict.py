@@ -17,7 +17,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .config import load_config
-from .dataset import PAD, UNK, VizWizVQA, build_image_transform
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for
 from .model import VQAModel
 from .train import build_tokenizer, pick_device, to_device
 
@@ -33,7 +33,8 @@ def predict(cfg, ckpt_path: str, out: str) -> None:
     text_mode = "onehot" if cfg.model.text_encoder.type == "onehot" else "tokens"
     pretrained = bool(cfg.model.image_encoder.get("pretrained", False))
     tokenizer = build_tokenizer(cfg)
-    tf = build_image_transform(cfg.data.image_size, pretrained, train=False)
+    mean, std = norm_stats_for(cfg.model.image_encoder.type)
+    tf = build_image_transform(cfg.data.image_size, pretrained, train=False, mean=mean, std=std)
 
     # Test split ("valid.json"); overwrite its vocab with the training vocab from the ckpt.
     test = VizWizVQA(
