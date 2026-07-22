@@ -20,13 +20,13 @@ fusion**, evaluated against a concat baseline in an ablation study.
 
 ### 2.1 Encoders (unified `(features, mask)` interface)
 
-- **Image**: a torchvision ResNet (scratch ResNet18 for the baseline, ImageNet-pretrained
-  ResNet50 for the improved model). We keep the spatial feature map before global pooling,
-  giving region tokens `V ∈ R^{B×N×d_v}` (`N = H·W`). ImageNet normalization is applied when
-  the backbone is pretrained.
+- **Image** (swappable): scratch ResNet18 (baseline), ImageNet-pretrained ResNet50, ViT-B/16,
+  or a CLIP ViT-B/16 vision encoder. For CNNs we keep the spatial feature map before global
+  pooling; for ViT/CLIP we keep the patch tokens — both give region tokens `V ∈ R^{B×N×d_v}`.
+  Normalization matches the backbone (ImageNet stats, or CLIP stats for the CLIP encoder).
 - **Text**: the baseline encodes the question as a multi-hot vocabulary vector projected by a
-  linear layer (one token). The improved model uses fine-tuned **BERT**, giving contextual
-  token embeddings `Q ∈ R^{B×L×d_q}` with an attention mask.
+  linear layer (one token, order-insensitive). The improved model uses fine-tuned **BERT**,
+  giving contextual token embeddings `Q ∈ R^{B×L×d_q}` with an attention mask.
 
 ### 2.2 Cross-modal attention fusion (centerpiece)
 
@@ -55,10 +55,13 @@ needs, so the fused representation is grounded in question-relevant image conten
 Closed-vocabulary classifier over the full set of normalized training answers (no catch-all
 `<unk>` class — a catch-all funnels the long answer tail into one dominant, always-wrong class
 and inflates index-based validation). Loss is cross-entropy on the most-frequent answer (hard
-label) or the VQA-score soft-label distribution over the 10 annotators (soft label). AdamW,
-cosine schedule with warmup, AMP, and light augmentation (RandomResizedCrop / flip / jitter).
-A 10% held-out slice of train is used for the VQA-accuracy validation reported below; the
-placeholder answer class is masked at evaluation and inference to mirror the string-matched test.
+label) or the VQA-score soft-label distribution over the 10 annotators (soft label). Following
+the course fine-tuning practice: AdamW with **differential learning rates** (pretrained encoders
+at 2e-5, the freshly-initialized fusion + head at 5e-4), cosine schedule with warmup, gradient
+clipping (max-norm 1.0), and AMP. Augmentation is RandomResizedCrop + ColorJitter only — we drop
+horizontal flip, which can invert the meaning of spatially/text-dependent questions. A 10%
+held-out slice of train gives the VQA-accuracy validation below; the placeholder class is masked
+at evaluation and inference to mirror the string-matched test.
 
 ## 3. Experiments
 
@@ -69,21 +72,23 @@ Omnicampus score.
 
 ### Ablation table
 
-| # | Image encoder | Text encoder | Fusion | Label | Val VQA acc | Test (Omnicampus) |
-|---|---------------|--------------|--------|-------|-------------|-------------------|
-| 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline) |
-| 1 | ResNet50 (pretrained) | one-hot | concat | hard | 0.5005 | _TBD_ |
-| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | 0.5391 | _TBD_ |
-| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | **0.5534** | _TBD_ |
-| 4 | ViT-B/16 (pretrained) | BERT | cross-attention | soft + diff-LR | _running_ | _TBD_ |
+| # | Image encoder | Text encoder | Fusion | Label | Extras | Val VQA acc |
+|---|---------------|--------------|--------|-------|--------|-------------|
+| 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline, test) |
+| 1 | ResNet50 (pretrained) | one-hot | concat | hard | — | 0.5005 |
+| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | — | 0.5391 |
+| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | — | **0.5534** |
+| 4 | CLIP ViT-B/16 | BERT | cross-attention | soft | diff-LR | 0.5232 |
+| 5 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | diff-LR | _running_ |
 
-Progression: pretrained image encoder alone barely helps (0→1, +0.1). Replacing one-hot with
-BERT and concat with cross-attention (+soft labels) is the largest jump (1→2, **+3.9 points**);
-a stronger ViT backbone adds a further +1.4 (2→3). Row 4 stacks differential learning rates
-(pretrained encoders at a low LR, the fresh head at a higher LR) + gradient clipping, following
-the course fine-tuning practice.
-
-_Rows 3–4 isolate the effect of fusion (2 vs 3) and label (2 vs 4) if GPU time permits._
+Progression: a pretrained image encoder alone barely helps (0→1, +0.1). Replacing one-hot with
+BERT and concat with cross-attention (+ soft labels) is the largest jump (1→2, **+3.9 points**);
+a stronger ViT backbone adds a further +1.4 (2→3). A CLIP vision encoder (row 4), despite being
+vision-language aligned, under-performed ViT at equal epochs — its validation was still rising
+at epoch 5 (under-converged) rather than clearly better, so ImageNet-pretrained ViT remained our
+best backbone in the available budget. Row 5 adds differential learning rates to the best
+configuration. (Official-baseline row 0 is the Omnicampus test score; rows 1–5 are our held-out
+validation.)
 
 ### Key finding
 
@@ -91,15 +96,20 @@ Upgrading only the image encoder (row 0→1) barely moved the honest validation 
 (0.499 → 0.5005): with a one-hot text encoder the model defaults to the dominant
 "unanswerable" answer. This localizes the bottleneck to the **text representation and fusion**.
 Replacing one-hot with fine-tuned BERT and concat with the cross-attention fusion (plus soft
-labels) then delivers the main gain (row 2, 0.5391, +3.9 points), confirming the diagnosis.
+labels) then delivers the main gain (row 2, +3.9 points), and a stronger ViT backbone adds a
+further +1.4 (row 3, best 0.5534) — confirming the diagnosis.
 
 ## 4. Discussion
 
 The image-encoder upgrade alone (row 0→1) is nearly a no-op on the honest metric, while adding
 BERT + cross-attention + soft labels (row 2) yields +3.9 points — the text representation and
 cross-modal grounding, not the visual backbone, are where VizWiz accuracy is won. The model
-still over-predicts the majority "unanswerable" class (a known VizWiz characteristic), which
-bounds accuracy; better visual grounding of answerable questions is the natural next lever.
+still over-predicts the majority "unanswerable" class (~74% of predictions; a known VizWiz
+characteristic and a class-imbalance artifact — outputting the majority answer minimizes loss),
+which bounds accuracy. Two levers we identified for going further: (i) re-weighting the loss by
+inverse answer frequency to stop the model from defaulting to the majority class, and (ii) an
+open-vocabulary / generative answer head, since the closed-vocabulary classifier structurally
+cannot emit answers absent from the training set.
 
 ## 5. Conclusion
 
