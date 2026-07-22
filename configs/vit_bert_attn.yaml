@@ -1,26 +1,33 @@
-# Improved model: pretrained ViT + BERT encoders, cross-modal attention, soft labels.
+# Improved model (Run 2/3): pretrained ViT + BERT encoders, cross-modal attention, soft labels.
+# The cross-attention fusion is the report centerpiece; toggling fusion/encoder/label gives the
+# ablation table.
 name: vit_bert_attn
 
 data:
-  root: data/vizwiz
+  root: data
   image_size: 224
   num_workers: 4
   answer_vocab_size: 3000
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: true
 
 model:
   image_encoder:
     type: vit
     pretrained: true
-    freeze: false       # fine-tune
+    freeze: false            # fine-tune
   text_encoder:
     type: bert
+    name: bert-base-uncased
+    freeze: false
   fusion:
     type: cross_attention
-    hidden_dim: 1024
+    hidden_dim: 768
 
 train:
-  epochs: 20
-  batch_size: 64
+  epochs: 10
+  batch_size: 32
   lr: 2.0e-5
   weight_decay: 0.01
   optimizer: adamw

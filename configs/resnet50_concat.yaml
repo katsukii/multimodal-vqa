@@ -1,0 +1,38 @@
+# Safety-net run (Run 1): pretrained ResNet50 + ImageNet norm + one-hot + concat.
+# Fast-converging, low-risk; goal is a valid submission comfortably above the 49.9% line.
+name: resnet50_concat
+
+data:
+  root: data
+  image_size: 224
+  num_workers: 4
+  answer_vocab_size: 3000
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: false
+
+model:
+  image_encoder:
+    type: resnet50
+    pretrained: true
+    freeze: false            # fine-tune the backbone
+  text_encoder:
+    type: onehot
+    out_dim: 512
+  fusion:
+    type: concat
+    hidden_dim: 1024
+
+train:
+  epochs: 6
+  batch_size: 64
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 300
+  amp: true
+  soft_label: false
+  seed: 42
+
+output_dir: experiments/resnet50_concat

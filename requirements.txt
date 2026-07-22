@@ -4,5 +4,6 @@ transformers
 timm
 pyyaml
 numpy
+pandas
 pillow
 tqdm

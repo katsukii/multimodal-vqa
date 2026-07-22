@@ -1,34 +1,38 @@
-# Baseline experiment (mirrors the provided weak baseline for a fair starting point).
+# Baseline experiment (mirrors the provided weak baseline: scratch ResNet18 + one-hot + concat).
+# Serves as the lower bound for the scratch-vs-pretrained ablation.
 name: baseline
 
 data:
-  root: data/vizwiz
+  root: data
   image_size: 224
   num_workers: 4
-  # Restrict the answer vocabulary to the top-N most frequent answers.
-  answer_vocab_size: 3000
+  answer_vocab_size: null   # null = full answer vocabulary (matches the official baseline)
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: false
 
 model:
   image_encoder:
-    type: resnet18      # resnet18 | resnet50 | vit | convnext
-    pretrained: false   # baseline trains from scratch
+    type: resnet18
+    pretrained: false        # baseline trains from scratch
     freeze: false
   text_encoder:
-    type: onehot        # onehot | gru | bert
+    type: onehot
+    out_dim: 512
   fusion:
-    type: concat        # concat | cross_attention
-    hidden_dim: 1024
+    type: concat
+    hidden_dim: 512
 
 train:
   epochs: 4
   batch_size: 128
   lr: 1.0e-3
-  weight_decay: 0.0
-  optimizer: adam       # adam | adamw
-  scheduler: none       # none | cosine
+  weight_decay: 1.0e-5
+  optimizer: adam
+  scheduler: none
   warmup_steps: 0
   amp: false
-  soft_label: false     # use the annotator answer distribution as soft targets
+  soft_label: false
   seed: 42
 
 output_dir: experiments/baseline

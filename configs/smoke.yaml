@@ -1,0 +1,37 @@
+# Tiny CPU smoke test over synthetic data (see tools/make_smoke_data.py). Not for real training.
+name: smoke
+
+data:
+  root: data/smoke
+  image_size: 64
+  num_workers: 0
+  answer_vocab_size: null
+  val_fraction: 0.5
+  max_qlen: 16
+  augment: false
+
+model:
+  image_encoder:
+    type: resnet18
+    pretrained: false
+    freeze: false
+  text_encoder:
+    type: onehot
+    out_dim: 64
+  fusion:
+    type: concat
+    hidden_dim: 64
+
+train:
+  epochs: 1
+  batch_size: 4
+  lr: 1.0e-3
+  weight_decay: 0.0
+  optimizer: adam
+  scheduler: none
+  warmup_steps: 0
+  amp: false
+  soft_label: false
+  seed: 0
+
+output_dir: experiments/smoke
