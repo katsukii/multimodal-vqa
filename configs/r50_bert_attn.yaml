@@ -1,0 +1,40 @@
+# Run 2 (main improved model): pretrained ResNet50 + BERT + cross-attention + soft labels.
+# Lighter than ViT+BERT so it fits a Colab T4 in time, while upgrading the bottleneck (text)
+# and adding the self-designed cross-modal attention that is the report centerpiece.
+name: r50_bert_attn
+
+data:
+  root: data
+  image_size: 224
+  num_workers: 2
+  answer_vocab_size: null   # full answer vocabulary (no catch-all <unk> class)
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: true
+
+model:
+  image_encoder:
+    type: resnet50
+    pretrained: true
+    freeze: false
+  text_encoder:
+    type: bert
+    name: bert-base-uncased
+    freeze: false
+  fusion:
+    type: cross_attention
+    hidden_dim: 768
+
+train:
+  epochs: 6
+  batch_size: 16          # safe for a 16GB T4 with ResNet50 + BERT both fine-tuned + AMP
+  lr: 3.0e-5
+  weight_decay: 0.01
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 400
+  amp: true
+  soft_label: true
+  seed: 42
+
+output_dir: experiments/r50_bert_attn

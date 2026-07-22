@@ -1,6 +1,7 @@
 torch
 torchvision
 transformers
+sentencepiece
 timm
 pyyaml
 numpy
