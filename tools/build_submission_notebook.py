@@ -66,7 +66,8 @@ def build() -> dict:
 
     cfg_name = os.path.splitext(os.path.basename(DEFAULT_CONFIG))[0]
     train_cell = (
-        "# 3. Train (safety net first). Swap CONFIG to configs/vit_bert_attn.yaml for the improved run.\n"
+        f"# 3. Train the model ({cfg_name}). Swap CONFIG for another file in configs/ to reproduce\n"
+        "#    a different ablation row (e.g. resnet50_concat for the safety-net baseline).\n"
         f"CONFIG = '{DEFAULT_CONFIG}'\n"
         "!python -m src.train --config $CONFIG"
     )
