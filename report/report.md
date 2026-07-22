@@ -73,12 +73,15 @@ Omnicampus score.
 |---|---------------|--------------|--------|-------|-------------|-------------------|
 | 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline) |
 | 1 | ResNet50 (pretrained) | one-hot | concat | hard | 0.5005 | _TBD_ |
-| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | **0.5391** | _TBD_ |
-| 3 | ResNet50 (pretrained) | BERT | concat | soft | _TBD (optional)_ | — |
-| 4 | ResNet50 (pretrained) | BERT | cross-attention | hard | _TBD (optional)_ | — |
+| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | 0.5391 | _TBD_ |
+| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | **0.5534** | _TBD_ |
+| 4 | ViT-B/16 (pretrained) | BERT | cross-attention | soft + diff-LR | _running_ | _TBD_ |
 
-Row 1→2 (BERT + cross-attention + soft) improves honest validation VQA accuracy by **+3.9
-points** (0.5005 → 0.5391), the largest single jump in our study.
+Progression: pretrained image encoder alone barely helps (0→1, +0.1). Replacing one-hot with
+BERT and concat with cross-attention (+soft labels) is the largest jump (1→2, **+3.9 points**);
+a stronger ViT backbone adds a further +1.4 (2→3). Row 4 stacks differential learning rates
+(pretrained encoders at a low LR, the fresh head at a higher LR) + gradient clipping, following
+the course fine-tuning practice.
 
 _Rows 3–4 isolate the effect of fusion (2 vs 3) and label (2 vs 4) if GPU time permits._
 
