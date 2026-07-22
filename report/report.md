@@ -73,24 +73,30 @@ Omnicampus score.
 |---|---------------|--------------|--------|-------|-------------|-------------------|
 | 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline) |
 | 1 | ResNet50 (pretrained) | one-hot | concat | hard | 0.5005 | _TBD_ |
-| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | _TBD_ | _TBD_ |
+| 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | **0.5391** | _TBD_ |
 | 3 | ResNet50 (pretrained) | BERT | concat | soft | _TBD (optional)_ | — |
 | 4 | ResNet50 (pretrained) | BERT | cross-attention | hard | _TBD (optional)_ | — |
 
+Row 1→2 (BERT + cross-attention + soft) improves honest validation VQA accuracy by **+3.9
+points** (0.5005 → 0.5391), the largest single jump in our study.
+
 _Rows 3–4 isolate the effect of fusion (2 vs 3) and label (2 vs 4) if GPU time permits._
 
-### Key finding so far
+### Key finding
 
 Upgrading only the image encoder (row 0→1) barely moved the honest validation metric
 (0.499 → 0.5005): with a one-hot text encoder the model defaults to the dominant
-"unanswerable" answer. This localizes the bottleneck to the **text representation and fusion**,
-motivating the BERT + cross-attention model (row 2).
+"unanswerable" answer. This localizes the bottleneck to the **text representation and fusion**.
+Replacing one-hot with fine-tuned BERT and concat with the cross-attention fusion (plus soft
+labels) then delivers the main gain (row 2, 0.5391, +3.9 points), confirming the diagnosis.
 
 ## 4. Discussion
 
-_[Fill after Run 2.]_ Expected: BERT contextual embeddings + cross-attention grounding give the
-main gain; soft labels add a smaller, consistent improvement by using the full annotator
-distribution rather than only the mode.
+The image-encoder upgrade alone (row 0→1) is nearly a no-op on the honest metric, while adding
+BERT + cross-attention + soft labels (row 2) yields +3.9 points — the text representation and
+cross-modal grounding, not the visual backbone, are where VizWiz accuracy is won. The model
+still over-predicts the majority "unanswerable" class (a known VizWiz characteristic), which
+bounds accuracy; better visual grounding of answerable questions is the natural next lever.
 
 ## 5. Conclusion
 
