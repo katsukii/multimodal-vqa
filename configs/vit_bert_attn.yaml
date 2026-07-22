@@ -28,7 +28,9 @@ model:
 train:
   epochs: 5               # val plateaus early; keeps the ViT+BERT run within a Colab session
   batch_size: 12          # ViT-base + BERT-base both fine-tuned; fits a 16GB T4 with AMP (drop to 8 on OOM)
-  lr: 2.0e-5
+  lr: 2.0e-5              # low LR for the pretrained ViT/BERT encoders
+  head_lr: 5.0e-4        # higher LR for the fresh fusion + classifier head (lectures 9/10)
+  grad_clip: 1.0         # gradient clipping (course fine-tuning default)
   weight_decay: 0.01
   optimizer: adamw
   scheduler: cosine

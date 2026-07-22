@@ -28,7 +28,9 @@ model:
 train:
   epochs: 6
   batch_size: 16          # safe for a 16GB T4 with ResNet50 + BERT both fine-tuned + AMP
-  lr: 3.0e-5
+  lr: 3.0e-5             # low LR for the pretrained ResNet50/BERT encoders
+  head_lr: 5.0e-4        # higher LR for the fresh fusion + classifier head (lectures 9/10)
+  grad_clip: 1.0         # gradient clipping (course fine-tuning default)
   weight_decay: 0.01
   optimizer: adamw
   scheduler: cosine

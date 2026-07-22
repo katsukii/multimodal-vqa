@@ -114,8 +114,18 @@ def train(cfg) -> None:
 
     opt_name = cfg.train.get("optimizer", "adam")
     optim_cls = torch.optim.AdamW if opt_name == "adamw" else torch.optim.Adam
-    optimizer = optim_cls(model.parameters(), lr=float(cfg.train.lr),
-                          weight_decay=float(cfg.train.get("weight_decay", 0.0)))
+    # Differential learning rates (course fine-tuning practice, lectures 9/10): pretrained
+    # encoders at a low LR, the freshly-initialized fusion + classifier head at a higher LR so
+    # they actually learn instead of the model defaulting to the majority answer.
+    base_lr = float(cfg.train.lr)
+    head_lr = float(cfg.train.get("head_lr", base_lr))
+    encoder_params = list(model.image_encoder.parameters()) + list(model.text_encoder.parameters())
+    head_params = list(model.fusion.parameters()) + list(model.classifier.parameters())
+    optimizer = optim_cls(
+        [{"params": encoder_params, "lr": base_lr}, {"params": head_params, "lr": head_lr}],
+        weight_decay=float(cfg.train.get("weight_decay", 0.0)),
+    )
+    grad_clip = float(cfg.train.get("grad_clip", 0.0))
     scheduler = make_scheduler(optimizer, cfg, steps_per_epoch=len(train_loader))
     use_amp = bool(cfg.train.get("amp", False)) and device == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
@@ -142,6 +152,9 @@ def train(cfg) -> None:
                 logits = model(image, question)
                 loss = compute_loss(logits, answers, mode_answer)
             scaler.scale(loss).backward()
+            if grad_clip > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             scaler.step(optimizer)
             scaler.update()
             if scheduler is not None:
