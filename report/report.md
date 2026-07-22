@@ -77,18 +77,18 @@ Omnicampus score.
 | 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline, test) |
 | 1 | ResNet50 (pretrained) | one-hot | concat | hard | — | 0.5005 |
 | 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | — | 0.5391 |
-| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | — | **0.5534** |
+| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | — | **0.5534** (test **0.55092**) |
 | 4 | CLIP ViT-B/16 | BERT | cross-attention | soft | diff-LR | 0.5232 |
-| 5 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | diff-LR | _running_ |
 
 Progression: a pretrained image encoder alone barely helps (0→1, +0.1). Replacing one-hot with
 BERT and concat with cross-attention (+ soft labels) is the largest jump (1→2, **+3.9 points**);
-a stronger ViT backbone adds a further +1.4 (2→3). A CLIP vision encoder (row 4), despite being
-vision-language aligned, under-performed ViT at equal epochs — its validation was still rising
-at epoch 5 (under-converged) rather than clearly better, so ImageNet-pretrained ViT remained our
-best backbone in the available budget. Row 5 adds differential learning rates to the best
-configuration. (Official-baseline row 0 is the Omnicampus test score; rows 1–5 are our held-out
-validation.)
+a stronger ViT backbone adds a further +1.4 (2→3). Row 3 is our submitted model: held-out
+validation 0.5534, **Omnicampus test 0.55092** — well above the 0.499 completion line and close
+to the ~0.60 target. A CLIP vision encoder (row 4), despite being vision-language aligned,
+under-performed ViT at equal epochs — its validation was still rising at epoch 5 (under-converged)
+rather than clearly better, so ImageNet-pretrained ViT remained our best backbone in the available
+budget. (Row 0 is the official-baseline Omnicampus test score; rows 1–4 are our held-out validation
+except where a test score is given.)
 
 ### Key finding
 
@@ -114,5 +114,9 @@ cannot emit answers absent from the training set.
 ## 5. Conclusion
 
 A modular from-scratch VQA model with a self-designed cross-modal attention fusion. The
-ablation isolates where accuracy comes from (text + fusion >> image encoder alone) and shows
-the attention fusion improves over concatenation. _[State final test score and completion.]_
+ablation isolates where accuracy comes from — text representation + cross-modal fusion, not the
+visual backbone alone. The submitted ViT-B/16 + BERT + cross-attention + soft-label model
+reaches **0.55092 VQA accuracy on the Omnicampus test set**, clearing the 0.499 completion line
+by ~5 points. Pretrained encoders are used only as fine-tuned components inside our own model
+and training loop. Remaining headroom toward ~0.60 lies in curbing the majority-class bias
+(loss re-weighting) and an open-vocabulary generative head — our identified next steps.
