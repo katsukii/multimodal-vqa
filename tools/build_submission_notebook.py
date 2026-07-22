@@ -21,8 +21,10 @@ OUT = os.path.join(REPO, "notebooks", "submission.ipynb")
 # Files bundled into the notebook (source of truth).
 FILES = sorted(glob.glob("src/*.py")) + sorted(glob.glob("configs/*.yaml")) + ["requirements.txt"]
 
-# Which config the notebook trains by default (safety net first).
-DEFAULT_CONFIG = "configs/resnet50_concat.yaml"
+# Which config the notebook trains by default. Run 2 (BERT + cross-attention) is the main
+# model; a plain "Run all" trains it end-to-end with no manual cell edits. Switch back to
+# configs/resnet50_concat.yaml here to reproduce the safety-net run.
+DEFAULT_CONFIG = "configs/r50_bert_attn.yaml"
 
 
 def code(src: str) -> dict:
