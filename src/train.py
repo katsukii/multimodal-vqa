@@ -166,6 +166,15 @@ def train(cfg) -> None:
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save(ckpt, os.path.join(cfg.output_dir, "best.pt"))
+            # Optional off-runtime backup (e.g. Google Drive) so a mid-run disconnect on a
+            # long job doesn't lose the best checkpoint. Never let a backup failure crash training.
+            backup_dir = cfg.get("backup_dir")
+            if backup_dir:
+                try:
+                    os.makedirs(backup_dir, exist_ok=True)
+                    torch.save(ckpt, os.path.join(backup_dir, f"{cfg.name}_best.pt"))
+                except Exception as e:  # noqa: BLE001
+                    print(f"[warn] backup to {backup_dir} failed: {e}")
 
     with open(os.path.join(cfg.output_dir, "metrics.json"), "w", encoding="utf-8") as f:
         json.dump({"best_val_vqa_acc": best_acc, "history": history}, f, indent=2)

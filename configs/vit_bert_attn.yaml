@@ -26,15 +26,17 @@ model:
     hidden_dim: 768
 
 train:
-  epochs: 10
-  batch_size: 32
+  epochs: 5               # val plateaus early; keeps the ViT+BERT run within a Colab session
+  batch_size: 12          # ViT-base + BERT-base both fine-tuned; fits a 16GB T4 with AMP (drop to 8 on OOM)
   lr: 2.0e-5
   weight_decay: 0.01
   optimizer: adamw
   scheduler: cosine
-  warmup_steps: 500
+  warmup_steps: 400
   amp: true
   soft_label: true
   seed: 42
 
 output_dir: experiments/vit_bert_attn
+# Off-runtime checkpoint backup for long runs; on Colab this survives a disconnect.
+backup_dir: /content/drive/MyDrive/vqa_ckpts
