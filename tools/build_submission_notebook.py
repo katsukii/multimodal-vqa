@@ -55,11 +55,12 @@ def build() -> dict:
     )
 
     data_cell = (
-        "# 2. Data: mount Drive, copy data.zip (prepared by data_download_VQA.ipynb), unzip.\n"
+        "# 2. Data: mount Drive, copy data.zip from the Drive working dir, unzip.\n"
         "#    Produces data/train.json, data/valid.json, data/train/, data/valid/\n"
         "from google.colab import drive\n"
         "drive.mount('/content/drive')\n"
-        "!cp \"/content/drive/MyDrive/data.zip\" .\n"
+        "DRIVE_DIR = '/content/drive/MyDrive/matsuo-dl/final'  # your Drive working directory\n"
+        "!cp \"{DRIVE_DIR}/data.zip\" .\n"
         "!unzip -q -o data.zip\n"
         "!ls data"
     )
@@ -89,7 +90,7 @@ def build() -> dict:
         "# 6. Zip the three required artifacts (<=4.5GB) and submit submission.zip to Omnicampus\n"
         "import os\n"
         "from zipfile import ZipFile\n"
-        "NOTEBOOK = '/content/drive/MyDrive/Colab Notebooks/submission.ipynb'  # adjust to this notebook's path\n"
+        "NOTEBOOK = f'{DRIVE_DIR}/submission.ipynb'  # this notebook's path in your Drive working dir\n"
         "with ZipFile('submission.zip', 'w') as zf:\n"
         "    zf.write('submission/submission.npy', arcname='submission.npy')\n"
         "    zf.write('submission/model.pt', arcname='model.pt')\n"

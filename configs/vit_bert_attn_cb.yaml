@@ -42,4 +42,4 @@ train:
   seed: 42
 
 output_dir: experiments/vit_bert_attn_cb
-backup_dir: /content/drive/MyDrive/vqa_ckpts
+backup_dir: /content/drive/MyDrive/matsuo-dl/final/vqa_ckpts
