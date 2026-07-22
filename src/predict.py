@@ -17,7 +17,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .config import load_config
-from .dataset import VizWizVQA, build_image_transform
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform
 from .model import VQAModel
 from .train import build_tokenizer, pick_device, to_device
 
@@ -56,11 +56,17 @@ def predict(cfg, ckpt_path: str, out: str) -> None:
     loader = DataLoader(test, batch_size=int(cfg.train.get("batch_size", 64)), shuffle=False,
                         num_workers=int(cfg.data.get("num_workers", 2)))
 
+    # Never emit the placeholder classes as an answer string — they always score 0 on the
+    # real test (no annotator ever answers "<unk>"). Mask them so argmax picks a real answer.
+    banned = [i for i, a in idx2answer.items() if a in (UNK, PAD)]
+
     preds: list[str] = []
     with torch.no_grad():
         for image, question in loader:
             image, question = image.to(device), to_device(question, device)
             logits = model(image, question)
+            if banned:
+                logits[:, banned] = float("-inf")
             for idx in logits.argmax(1).cpu().tolist():
                 preds.append(idx2answer[idx])
 

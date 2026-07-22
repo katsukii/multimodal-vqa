@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 
 from .config import load_config
-from .dataset import VizWizVQA, build_image_transform, soft_target_from_answers
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform, soft_target_from_answers
 from .metrics import vqa_accuracy_batch
 from .model import VQAModel
 
@@ -63,12 +63,16 @@ def make_scheduler(optimizer, cfg, steps_per_epoch: int):
 
 
 @torch.no_grad()
-def evaluate(model, loader, device) -> float:
+def evaluate(model, loader, device, banned=None) -> float:
     model.eval()
     total, n = 0.0, 0
     for image, question, answers, _ in loader:
         image, question = image.to(device), to_device(question, device)
         logits = model(image, question)
+        if banned:
+            # Mirror inference: placeholder classes are never emitted, so the reported val
+            # accuracy reflects the real (string-matched) test behaviour, not an inflated proxy.
+            logits[:, banned] = float("-inf")
         total += vqa_accuracy_batch(logits.argmax(1).cpu(), answers) * image.size(0)
         n += image.size(0)
     return total / max(1, n)
@@ -117,6 +121,7 @@ def train(cfg) -> None:
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     ce = nn.CrossEntropyLoss()
+    banned = [i for i, a in full.idx2answer.items() if a in (UNK, PAD)]
 
     def compute_loss(logits, answers, mode_answer):
         if soft_label:
@@ -143,7 +148,7 @@ def train(cfg) -> None:
                 scheduler.step()
             running += loss.item()
 
-        val_acc = evaluate(model, val_loader, device)
+        val_acc = evaluate(model, val_loader, device, banned=banned)
         train_loss = running / max(1, len(train_loader))
         history.append({"epoch": epoch + 1, "train_loss": train_loss, "val_vqa_acc": val_acc})
         print(f"[{epoch + 1}/{cfg.train.epochs}] train_loss={train_loss:.4f} val_vqa_acc={val_acc:.4f}")
