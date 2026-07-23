@@ -11,10 +11,13 @@ string; performance is measured with the standard VQA accuracy
 
 Our model is a modular, config-driven architecture: a swappable **image encoder** and
 **text encoder** produce token/region sequences that are combined by a swappable **fusion**
-module and classified over a closed answer vocabulary. Pretrained backbones (ResNet, BERT)
-are used *only as components* and fine-tuned by our own training loop — no end-to-end VQA
-model is used. The contribution highlighted here is a **self-designed cross-modal attention
-fusion**, evaluated against a concat baseline in an ablation study.
+module and classified over a closed answer vocabulary. Pretrained backbones are used *only as
+components* and fine-tuned by our own training loop — no end-to-end VQA model is used. The
+components are ViT-B/16 (ImageNet-1k pretrained) and BERT-base (Wikipedia + BookCorpus
+pretrained); **neither was trained on VizWiz or any VQA data** — the answer prediction is learned
+solely from the distributed VizWiz training set by our own loop. The contribution highlighted here
+is a **self-designed cross-modal attention fusion**, evaluated against a concat baseline in an
+ablation study.
 
 ## 2. Method
 
@@ -106,10 +109,13 @@ BERT + cross-attention + soft labels (row 2) yields +3.9 points — the text rep
 cross-modal grounding, not the visual backbone, are where VizWiz accuracy is won. The model
 still over-predicts the majority "unanswerable" class (~74% of predictions; a known VizWiz
 characteristic and a class-imbalance artifact — outputting the majority answer minimizes loss),
-which bounds accuracy. Two levers we identified for going further: (i) re-weighting the loss by
-inverse answer frequency to stop the model from defaulting to the majority class, and (ii) an
-open-vocabulary / generative answer head, since the closed-vocabulary classifier structurally
-cannot emit answers absent from the training set.
+which bounds accuracy. We tried the obvious fix — re-weighting the loss by inverse answer
+frequency — but combined with soft labels it *regressed* (0.5534 → 0.53): steering the model off
+the safe majority makes it emit confident wrong answers, a net loss under the VQA metric. Two more
+promising levers remain: (i) an open-vocabulary / generative answer head, since the closed-vocabulary
+classifier structurally cannot emit answers absent from the training set, and (ii) OCR features fed
+into the question stream — VizWiz has many "what does this say?" questions where reading in-image
+text directly should help.
 
 ## 5. Conclusion
 
