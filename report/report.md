@@ -84,17 +84,18 @@ Omnicampus score.
 | 0 | ResNet18 (scratch) | one-hot | concat | hard | — | 0.499 (official baseline, test) |
 | 1 | ResNet50 (pretrained) | one-hot | concat | hard | — | 0.5005 |
 | 2 | ResNet50 (pretrained) | BERT | cross-attention | soft | — | 0.5391 |
-| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | ViT norm (0.5,0.5,0.5) | **0.5624** (test **0.57843**) |
+| 3 | ViT-B/16 (pretrained) | BERT | cross-attention | soft | ViT norm; 8 epochs | **0.5705** (test **0.57843**) |
 | 4 | CLIP ViT-B/16 | BERT | cross-attention | soft | diff-LR | 0.5232 |
 
 Progression: a pretrained image encoder alone barely helps (0→1, +0.1). Replacing one-hot with
 BERT and concat with cross-attention (+ soft labels) is the largest jump (1→2, **+3.9 points**);
 a stronger ViT backbone adds a further +1.4 (2→3). Row 3 is our submitted model: correcting the
-ViT input normalization to its own (0.5,0.5,0.5) pretraining stats (instead of ImageNet) lifted
-the **Omnicampus test to 0.57843** (held-out validation 0.5624) — well above the 0.499 completion
-line and approaching the ~0.60 target. (Rows 1–2 report augmented-val numbers; row 3's val is the
-corrected deterministic val, so it is not directly comparable — the test score is the reliable
-figure.) A CLIP vision encoder (row 4), despite being vision-language aligned,
+ViT input normalization to its own (0.5,0.5,0.5) pretraining stats (instead of ImageNet) and
+training to convergence (8 epochs; validation was still rising at 5) lifted the **Omnicampus test
+to 0.57843** (held-out validation 0.5705) — well above the 0.499 completion line and approaching
+the ~0.60 target. (Rows 1–2 report augmented-val numbers; row 3's val is the corrected
+deterministic val, so it is not directly comparable — the test score is the reliable figure.)
+A CLIP vision encoder (row 4), despite being vision-language aligned,
 under-performed ViT at equal epochs — its validation was still rising at epoch 5 (under-converged)
 rather than clearly better, so ImageNet-pretrained ViT remained our best backbone in the available
 budget. (Row 0 is the official-baseline Omnicampus test score; rows 1–4 are our held-out validation
