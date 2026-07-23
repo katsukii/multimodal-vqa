@@ -2,12 +2,16 @@
 
 Deadline: **2026-07-23 (Thu) 16:00 JST**. Target: VQA acc ~60% (completion line 49.9%).
 
-## Status — COMPLETE (submitted 2026-07-23)
+## Status — COMPLETE (submitted 2026-07-23, deadline 16:00 JST)
 
-- **Submitted model**: ViT-B/16 + BERT + cross-attention + soft label (`configs/vit_bert_attn.yaml`).
-- **Best score (val)**: 0.5534 (held-out 10% of train).
-- **Best score (Omnicampus test)**: **0.57396** — clears the 0.499 completion line; rank ~60/177.
-- Both required artifacts submitted: zip {`submission.npy`, `model.pt`, notebook} + report PDF.
+- **Graded submission**: `configs/vit_bert_plain.yaml` — ViT-B/16 + BERT + cross-attention + soft,
+  single LR, correct ViT normalization (0.5,0.5,0.5), 5 epochs. **Omnicampus test 0.57843**
+  (val 0.5624) — clears the 0.499 completion line by ~8 pts. Both artifacts submitted (zip + PDF).
+- **Best model produced (not submitted, missed deadline)**: `vit_bert_plain_long` (8 epochs),
+  val **0.5705**, unanswerable 0.694 / 182 unique (least majority collapse). Archived in
+  `results/final/` (submission.npy, model.pt [git-ignored], executed_notebook.ipynb).
+- Key late win: fixing ViT input normalization (was ImageNet, should be its own 0.5,0.5,0.5)
+  lifted test 0.57396 → 0.57843 — from a Codex code review.
 - Ablation (val): baseline 0.499(test) / R50+onehot+concat 0.5005 / R50+BERT+attn+soft 0.5391 /
   ViT+BERT+attn+soft 0.5534 / CLIP 0.5232 / +class-balanced 0.5317 (regressed).
 - Confirmed dead ends (no re-try): CLIP backbone (underperformed ViT), class-balanced loss
