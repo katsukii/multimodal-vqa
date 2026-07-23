@@ -147,9 +147,10 @@ ViT input normalization to its own (0.5,0.5,0.5) pretraining stats (instead of I
 the <strong>Omnicampus test to 0.57843</strong> (held-out validation 0.5624) — well above the 0.499 completion
 line and approaching the ~0.60 target. (Rows 1–2 report augmented-val numbers; row 3's val is the
 corrected deterministic val, so it is not directly comparable — the test score is the reliable
-figure.) A continuation to 8 epochs (validation was still rising at 5) reached val 0.5705 with a
-lower majority-class share, but finished just after the submission deadline. A CLIP vision encoder
-(row 4), despite being vision-language aligned,
+figure.) A continuation to 8 epochs (validation was still rising at 5) reached val 0.5705 and
+<strong>test 0.58955</strong> with a lower majority-class share, but finished just after the submission
+deadline, so 0.57843 remained the graded result. A CLIP vision encoder (row 4), despite being
+vision-language aligned,
 under-performed ViT at equal epochs — its validation was still rising at epoch 5 (under-converged)
 rather than clearly better, so ImageNet-pretrained ViT remained our best backbone in the available
 budget. (Row 0 is the official-baseline Omnicampus test score; rows 1–4 are our held-out validation

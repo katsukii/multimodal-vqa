@@ -8,7 +8,7 @@ Deadline: **2026-07-23 (Thu) 16:00 JST**. Target: VQA acc ~60% (completion line 
   single LR, correct ViT normalization (0.5,0.5,0.5), 5 epochs. **Omnicampus test 0.57843**
   (val 0.5624) — clears the 0.499 completion line by ~8 pts. Both artifacts submitted (zip + PDF).
 - **Best model produced (not submitted, missed deadline)**: `vit_bert_plain_long` (8 epochs),
-  val **0.5705**, unanswerable 0.694 / 182 unique (least majority collapse). Archived in
+  val **0.5705**, test 0.58955, unanswerable 0.694 / 182 unique (least majority collapse). Archived in
   `results/final/` (submission.npy, model.pt [git-ignored], executed_notebook.ipynb).
 - Key late win: fixing ViT input normalization (was ImageNet, should be its own 0.5,0.5,0.5)
   lifted test 0.57396 → 0.57843 — from a Codex code review.
