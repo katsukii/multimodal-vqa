@@ -15,10 +15,10 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 
 from .config import load_config
-from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for, soft_target_from_answers
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform, soft_target_from_answers
 from .textutils import process_text
 from .metrics import vqa_accuracy_batch
 from .model import VQAModel
@@ -88,32 +88,42 @@ def train(cfg) -> None:
     soft_label = bool(cfg.train.get("soft_label", False))
 
     tokenizer = build_tokenizer(cfg)
-    mean, std = norm_stats_for(cfg.model.image_encoder.type)
+    kw = dict(root=cfg.data.root, split="train", answer=True, text_mode=text_mode,
+              answer_vocab_size=cfg.data.get("answer_vocab_size"), tokenizer=tokenizer,
+              max_qlen=int(cfg.data.get("max_qlen", 32)))
+    # Build the model first so the image transform can use the backbone's own normalization
+    # (e.g. ViT expects (0.5,0.5,0.5), not ImageNet stats). Vocab is built from the JSON only.
+    full = VizWizVQA(transform=None, **kw)
+    model = VQAModel(
+        cfg, num_answers=full.num_answers,
+        onehot_dim=full.onehot_dim if text_mode == "onehot" else None,
+        word_vocab_size=full.word_vocab_size if cfg.model.text_encoder.type == "gru" else None,
+    ).to(device)
+    mean, std = model.image_encoder.norm_mean, model.image_encoder.norm_std
+
+    # Separate transforms: augment only training; validation uses the deterministic eval
+    # transform so val metrics and best-checkpoint selection match real inference.
     train_tf = build_image_transform(cfg.data.image_size, pretrained, train=True,
                                      augment=bool(cfg.data.get("augment", False)), mean=mean, std=std)
-    # Full training dataset (vocab built over all train rows), then split into train/val.
-    full = VizWizVQA(
-        root=cfg.data.root, split="train", transform=train_tf, answer=True,
-        text_mode=text_mode, answer_vocab_size=cfg.data.get("answer_vocab_size"),
-        tokenizer=tokenizer, max_qlen=int(cfg.data.get("max_qlen", 32)),
-    )
+    eval_tf = build_image_transform(cfg.data.image_size, pretrained, train=False, mean=mean, std=std)
+    full.transform = train_tf
+    full_eval = VizWizVQA(transform=eval_tf, **kw)
+    full_eval.update_dict(full)  # guarantee identical vocabulary
+
     val_fraction = float(cfg.data.get("val_fraction", 0.1))
     n_val = max(1, int(len(full) * val_fraction))
     n_train = len(full) - n_val
     g = torch.Generator().manual_seed(int(cfg.train.get("seed", 42)))
-    train_set, val_set = random_split(full, [n_train, n_val], generator=g)
+    perm = torch.randperm(len(full), generator=g).tolist()
+    train_idx, val_idx = perm[:n_train], perm[n_train:]
+    train_set = Subset(full, train_idx)          # augmented
+    val_set = Subset(full_eval, val_idx)         # deterministic
 
     num_workers = int(cfg.data.get("num_workers", 2))
     train_loader = DataLoader(train_set, batch_size=int(cfg.train.batch_size), shuffle=True,
                               num_workers=num_workers, pin_memory=(device == "cuda"))
     val_loader = DataLoader(val_set, batch_size=int(cfg.train.batch_size), shuffle=False,
                             num_workers=num_workers, pin_memory=(device == "cuda"))
-
-    model = VQAModel(
-        cfg, num_answers=full.num_answers,
-        onehot_dim=full.onehot_dim if text_mode == "onehot" else None,
-        word_vocab_size=full.word_vocab_size if cfg.model.text_encoder.type == "gru" else None,
-    ).to(device)
 
     opt_name = cfg.train.get("optimizer", "adam")
     optim_cls = torch.optim.AdamW if opt_name == "adamw" else torch.optim.Adam

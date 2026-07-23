@@ -20,16 +20,17 @@ import torch
 from torch.utils.data import DataLoader
 
 from .config import load_config
-from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform
 from .model import VQAModel
 from .train import build_tokenizer, pick_device, to_device
 
 
-def _load_state(path, device):
+def _load_ckpt(path, device):
+    """Return (state_dict, idx2answer or None). Full ckpts carry idx2answer for verification."""
     obj = torch.load(path, map_location=device, weights_only=False)
     if isinstance(obj, dict) and "model_state" in obj:
-        return obj["model_state"]
-    return obj
+        return obj["model_state"], obj.get("idx2answer")
+    return obj, None
 
 
 def ensemble_predict(config_paths, ckpt_paths, out: str) -> None:
@@ -53,15 +54,24 @@ def ensemble_predict(config_paths, ckpt_paths, out: str) -> None:
     models, loaders = [], []
     for cfg_path, ckpt_path in zip(config_paths, ckpt_paths):
         cfg = load_config(cfg_path)
-        mean, std = norm_stats_for(cfg.model.image_encoder.type)
+        model = VQAModel(cfg, num_answers=num_answers).to(device)
+        state, ckpt_idx2answer = _load_ckpt(ckpt_path, device)
+        # Guard against silent vocabulary drift: same class count but different index->answer
+        # mapping would misalign the averaged logits. Full ckpts let us verify exactly.
+        if ckpt_idx2answer is not None and ckpt_idx2answer != idx2answer:
+            raise ValueError(
+                f"vocab mismatch for {ckpt_path}: its idx2answer differs from the rebuilt "
+                f"training vocab — averaging logits would misalign answers. Re-derive with a "
+                f"matching train.json / process_text, or align by answer string."
+            )
+        model.load_state_dict(state)
+        model.eval()
+        mean, std = model.image_encoder.norm_mean, model.image_encoder.norm_std
         tf = build_image_transform(cfg.data.image_size,
                                    bool(cfg.model.image_encoder.get("pretrained", False)),
                                    train=False, mean=mean, std=std)
         test = VizWizVQA(root=cfg.data.root, split="valid", transform=tf, answer=False,
                          text_mode="tokens", tokenizer=tokenizer, max_qlen=max_qlen)
-        model = VQAModel(cfg, num_answers=num_answers).to(device)
-        model.load_state_dict(_load_state(ckpt_path, device))
-        model.eval()
         models.append(model)
         loaders.append(DataLoader(test, batch_size=batch_size, shuffle=False,
                                   num_workers=int(cfg.data.get("num_workers", 2))))

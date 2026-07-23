@@ -17,7 +17,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .config import load_config
-from .dataset import PAD, UNK, VizWizVQA, build_image_transform, norm_stats_for
+from .dataset import PAD, UNK, VizWizVQA, build_image_transform
 from .model import VQAModel
 from .train import build_tokenizer, pick_device, to_device
 
@@ -33,7 +33,17 @@ def predict(cfg, ckpt_path: str, out: str) -> None:
     text_mode = "onehot" if cfg.model.text_encoder.type == "onehot" else "tokens"
     pretrained = bool(cfg.model.image_encoder.get("pretrained", False))
     tokenizer = build_tokenizer(cfg)
-    mean, std = norm_stats_for(cfg.model.image_encoder.type)
+
+    model = VQAModel(
+        cfg, num_answers=len(idx2answer),
+        onehot_dim=len(question2idx) + 1 if text_mode == "onehot" else None,
+        word_vocab_size=len(word2idx) if cfg.model.text_encoder.type == "gru" else None,
+    ).to(device)
+    model.load_state_dict(ckpt["model_state"])
+    model.eval()
+
+    # Use the backbone's own normalization (matches training)
+    mean, std = model.image_encoder.norm_mean, model.image_encoder.norm_std
     tf = build_image_transform(cfg.data.image_size, pretrained, train=False, mean=mean, std=std)
 
     # Test split ("valid.json"); overwrite its vocab with the training vocab from the ckpt.
@@ -45,14 +55,6 @@ def predict(cfg, ckpt_path: str, out: str) -> None:
     test.word2idx = word2idx
     test.answer2idx = {v: k for k, v in idx2answer.items()}
     test.idx2answer = idx2answer
-
-    model = VQAModel(
-        cfg, num_answers=len(idx2answer),
-        onehot_dim=len(question2idx) + 1 if text_mode == "onehot" else None,
-        word_vocab_size=len(word2idx) if cfg.model.text_encoder.type == "gru" else None,
-    ).to(device)
-    model.load_state_dict(ckpt["model_state"])
-    model.eval()
 
     loader = DataLoader(test, batch_size=int(cfg.train.get("batch_size", 64)), shuffle=False,
                         num_workers=int(cfg.data.get("num_workers", 2)))

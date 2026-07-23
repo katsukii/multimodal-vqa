@@ -35,6 +35,10 @@ class _TorchvisionBackbone(nn.Module):
         else:
             raise ValueError(f"unsupported torchvision backbone: {name}")
 
+        # torchvision ImageNet weights expect ImageNet normalization
+        self.norm_mean = (0.485, 0.456, 0.406)
+        self.norm_std = (0.229, 0.224, 0.225)
+
         # Drop the global pool + fc so we keep the spatial feature map.
         self.body = nn.Sequential(*list(net.children())[:-2])
         if freeze:
@@ -63,6 +67,10 @@ class _TimmBackbone(nn.Module):
         self.model = timm.create_model(model_name, pretrained=pretrained, num_classes=0)
         self.out_dim = self.model.num_features
         self.is_vit = name in ("vit", "clip")
+        # Use the backbone's own pretraining normalization (e.g. ViT is (0.5,0.5,0.5), not ImageNet)
+        cfg = self.model.pretrained_cfg
+        self.norm_mean = tuple(cfg.get("mean", (0.485, 0.456, 0.406)))
+        self.norm_std = tuple(cfg.get("std", (0.229, 0.224, 0.225)))
         if freeze:
             for p in self.model.parameters():
                 p.requires_grad = False
