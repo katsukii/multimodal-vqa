@@ -2,15 +2,20 @@
 
 Deadline: **2026-07-23 (Thu) 16:00 JST**. Target: VQA acc ~60% (completion line 49.9%).
 
-## Status
+## Status — COMPLETE (submitted 2026-07-23)
 
-- Phase: full `src/` pipeline implemented and smoke-tested end-to-end on CPU (train -> predict ->
-  valid `submission.npy`). Ready for real GPU training. Data not yet downloaded.
-- Confirmed submission spec from the official baseline notebook: `submission.npy` = np.array of
-  answer **strings** (len 4969, `valid.json` order); zip {`submission.npy`, `model.pt`, notebook}.
-  Data layout: `data/train.json`, `data/valid.json`, `data/train/`, `data/valid/`.
-- Best score (val): —
-- Best score (Omnicampus): —
+- **Submitted model**: ViT-B/16 + BERT + cross-attention + soft label (`configs/vit_bert_attn.yaml`).
+- **Best score (val)**: 0.5534 (held-out 10% of train).
+- **Best score (Omnicampus test)**: **0.57396** — clears the 0.499 completion line; rank ~60/177.
+- Both required artifacts submitted: zip {`submission.npy`, `model.pt`, notebook} + report PDF.
+- Ablation (val): baseline 0.499(test) / R50+onehot+concat 0.5005 / R50+BERT+attn+soft 0.5391 /
+  ViT+BERT+attn+soft 0.5534 / CLIP 0.5232 / +class-balanced 0.5317 (regressed).
+- Confirmed dead ends (no re-try): CLIP backbone (underperformed ViT), class-balanced loss
+  (regressed with soft labels — corroborated on course Slack).
+- Post-deadline improvement candidates: OCR features (VizWiz has many in-image-text questions),
+  open-vocab/generative head, ViT+r50 ensemble.
+- Submission spec: `submission.npy` = np.array of answer **strings** (len 4969, `valid.json` order);
+  data layout `data/{train,valid}.json` + `data/{train,valid}/`.
 
 ## Milestones
 
