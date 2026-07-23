@@ -24,7 +24,7 @@ FILES = sorted(glob.glob("src/*.py")) + sorted(glob.glob("configs/*.yaml")) + ["
 # Which config the notebook trains by default. Run 2 (BERT + cross-attention) is the main
 # model; a plain "Run all" trains it end-to-end with no manual cell edits. Switch back to
 # configs/resnet50_concat.yaml here to reproduce the safety-net run.
-DEFAULT_CONFIG = "configs/vit_bert_plain.yaml"
+DEFAULT_CONFIG = "configs/vit_bert_plain_long.yaml"
 
 
 def code(src: str) -> dict:

@@ -1,0 +1,41 @@
+# Finishing push: the winning config (vit_bert_plain, test 0.57843) trained longer. Its
+# validation was still rising monotonically at epoch 5 (0.5089 -> 0.5624), i.e. under-converged,
+# so more epochs is the lowest-risk way to squeeze more. Nothing else changed.
+name: vit_bert_plain_long
+
+data:
+  root: data
+  image_size: 224
+  num_workers: 2
+  answer_vocab_size: null
+  val_fraction: 0.1
+  max_qlen: 32
+  augment: true
+
+model:
+  image_encoder:
+    type: vit
+    pretrained: true
+    freeze: false
+  text_encoder:
+    type: bert
+    name: bert-base-uncased
+    freeze: false
+  fusion:
+    type: cross_attention
+    hidden_dim: 768
+
+train:
+  epochs: 8           # up from 5 (val was still rising); bump to 10 if you have GPU time
+  batch_size: 12
+  lr: 2.0e-5
+  weight_decay: 0.01
+  optimizer: adamw
+  scheduler: cosine
+  warmup_steps: 400
+  amp: true
+  soft_label: true
+  seed: 42
+
+output_dir: experiments/vit_bert_plain_long
+backup_dir: /content/drive/MyDrive/matsuo-dl/final/vqa_ckpts
