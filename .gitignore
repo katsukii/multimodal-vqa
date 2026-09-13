@@ -30,4 +30,9 @@ experiments/smoke/
 
 # Local working files (not tracked)
 CLAUDE.md
+AGENTS.md
 vault-notes
+.claude/
+
+# Local smoke-test artifacts (BERT smoke run, ~1.3 GB)
+experiments/smoke_bert/
